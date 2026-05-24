@@ -1,7 +1,7 @@
 import React from 'react'
 import TodoItem from './TodoItem'
 
-const TodoListDisplay = ({ todos, onToggle, onDelete }) => {
+const TodoListDisplay = ({ todos, onToggle, onDelete, onEdit }) => {
   return (
     <div className="divide-y divide-gray-200">
       {todos.length === 0 ? (
@@ -16,6 +16,7 @@ const TodoListDisplay = ({ todos, onToggle, onDelete }) => {
             index={idx}
             onToggle={onToggle}
             onDelete={onDelete}
+            onEdit={onEdit}
           />
         ))
       )}
