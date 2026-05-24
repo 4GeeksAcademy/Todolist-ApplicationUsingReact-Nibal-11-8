@@ -28,28 +28,34 @@ const TodoList = () => {
     try {
       setLoading(true)
       // Create user first
-      const createRes = await fetch(`${API_BASE}/user/${username}`, {
+      await fetch(`${API_BASE}/user/${username}`, {
         method: 'POST'
       })
-      console.log('Create user response:', createRes.status)
       
       // Wait a moment for user to be created
       await new Promise(resolve => setTimeout(resolve, 1000))
       
       // Then load todos
+      await loadTodos()
+    } catch (err) {
+      console.error('Init error:', err)
+      setLoading(false)
+    }
+  }
+
+  const loadTodos = async () => {
+    try {
       const loadRes = await fetch(`${API_BASE}/todos/${username}`)
-      console.log('Load todos response:', loadRes.status)
       
       if (loadRes.ok) {
         const data = await loadRes.json()
-        console.log('Loaded todos:', data)
         setTodos(Array.isArray(data) ? data : [])
       } else {
         setTodos([])
       }
       setLoading(false)
     } catch (err) {
-      console.error('Init error:', err)
+      console.error('Load error:', err)
       setLoading(false)
     }
   }
@@ -67,18 +73,11 @@ const TodoList = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(task)
         })
-        console.log('Add task response:', addRes.status)
 
         if (addRes.ok) {
           setNewTodo('')
           await new Promise(resolve => setTimeout(resolve, 500))
-          
-          // Reload todos
-          const loadRes = await fetch(`${API_BASE}/todos/${username}`)
-          if (loadRes.ok) {
-            const data = await loadRes.json()
-            setTodos(Array.isArray(data) ? data : [])
-          }
+          await loadTodos()
         }
       } catch (err) {
         console.error('Add error:', err)
@@ -91,17 +90,10 @@ const TodoList = () => {
       const delRes = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'DELETE'
       })
-      console.log('Delete response:', delRes.status)
 
       if (delRes.ok) {
         await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Reload todos
-        const loadRes = await fetch(`${API_BASE}/todos/${username}`)
-        if (loadRes.ok) {
-          const data = await loadRes.json()
-          setTodos(Array.isArray(data) ? data : [])
-        }
+        await loadTodos()
       }
     } catch (err) {
       console.error('Delete error:', err)
@@ -121,17 +113,10 @@ const TodoList = () => {
           done: !currentDone
         })
       })
-      console.log('Toggle response:', updateRes.status)
 
       if (updateRes.ok) {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Reload todos
-        const loadRes = await fetch(`${API_BASE}/todos/${username}`)
-        if (loadRes.ok) {
-          const data = await loadRes.json()
-          setTodos(Array.isArray(data) ? data : [])
-        }
+        await new Promise(resolve => setTimeout(resolve, 300))
+        await loadTodos()
       }
     } catch (err) {
       console.error('Toggle error:', err)
@@ -144,7 +129,6 @@ const TodoList = () => {
         const clearRes = await fetch(`${API_BASE}/user/${username}`, {
           method: 'DELETE'
         })
-        console.log('Clear all response:', clearRes.status)
 
         if (clearRes.ok) {
           setTodos([])
