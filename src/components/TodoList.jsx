@@ -27,20 +27,22 @@ const TodoList = () => {
     try {
       setLoading(true)
       
-      // First create the user
+      // Create user with empty array
       await fetch(`${API_BASE}/user/${username}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify([])
       })
 
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 800))
 
-      // Then get todos
+      // Get todos
       const response = await fetch(`${API_BASE}/user/${username}`)
       if (response.ok) {
         const data = await response.json()
         setTodos(Array.isArray(data) ? data : [])
+      } else {
+        setTodos([])
       }
       setLoading(false)
     } catch (err) {
@@ -51,15 +53,12 @@ const TodoList = () => {
 
   const saveTodos = async (updatedTodos) => {
     try {
-      const response = await fetch(`${API_BASE}/user/${username}`, {
+      await fetch(`${API_BASE}/user/${username}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedTodos)
       })
-      
-      if (response.ok) {
-        setTodos(updatedTodos)
-      }
+      setTodos(updatedTodos)
     } catch (err) {
       console.error('Save error:', err)
     }
@@ -94,13 +93,13 @@ const TodoList = () => {
   const itemsLeft = todos.filter(t => !t.done).length
 
   return (
-    <div className="w-full max-w-2xl">
-      <h1 className="text-6xl font-light text-gray-300 text-center mb-8 tracking-widest">todos</h1>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100">
+      <div className="w-full max-w-2xl px-4">
+        <h1 className="text-6xl font-light text-gray-300 text-center mb-8 tracking-widest">todos</h1>
 
-      {loading ? (
-        <div className="text-center text-gray-400">Loading...</div>
-      ) : (
-        <>
+        {loading ? (
+          <div className="text-center text-gray-400">Loading...</div>
+        ) : (
           <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-gray-200">
               <input
@@ -162,8 +161,8 @@ const TodoList = () => {
               )}
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   )
 }
