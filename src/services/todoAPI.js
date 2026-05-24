@@ -1,43 +1,104 @@
-// API configuration and methods
-const API_BASE = 'https://jsonplaceholder.typicode.com'
+// Complete API service with all required endpoints
+const API_BASE = 'http://localhost:3001/api'
 
 export const todoAPI = {
-  async createUser(username) {
-    // JSONPlaceholder doesn't require user creation
-    return true
-  },
-
+  // GET all todos for user
   async getTodos(username) {
     try {
-      const response = await fetch(`${API_BASE}/todos?userId=1`)
+      const response = await fetch(`${API_BASE}/todos?username=${username}`)
       if (response.ok) {
-        const data = await response.json()
-        return data.slice(0, 5) // Get first 5 todos
+        return await response.json()
       }
       return []
     } catch (err) {
-      console.error('Get error:', err)
+      console.error('GET todos error:', err)
       return []
     }
   },
 
-  async saveTodos(username, todos) {
+  // POST new todo
+  async addTodo(username, label) {
     try {
-      // Save to localStorage as fallback since JSONPlaceholder is read-only
-      localStorage.setItem(`todos_${username}`, JSON.stringify(todos))
-      return true
+      const response = await fetch(`${API_BASE}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          label,
+          done: false
+        })
+      })
+      if (response.ok) {
+        return await response.json()
+      }
+      return null
     } catch (err) {
-      console.error('Save error:', err)
+      console.error('POST todo error:', err)
+      return null
+    }
+  },
+
+  // PUT update todo (toggle complete or edit)
+  async updateTodo(id, label, done) {
+    try {
+      const response = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label,
+          done
+        })
+      })
+      if (response.ok) {
+        return await response.json()
+      }
+      return null
+    } catch (err) {
+      console.error('PUT todo error:', err)
+      return null
+    }
+  },
+
+  // DELETE single todo
+  async deleteTodo(id) {
+    try {
+      const response = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      return response.ok
+    } catch (err) {
+      console.error('DELETE todo error:', err)
       return false
     }
   },
 
-  async loadFromStorage(username) {
+  // DELETE all todos for user
+  async deleteAllTodos(username) {
     try {
-      const stored = localStorage.getItem(`todos_${username}`)
-      return stored ? JSON.parse(stored) : []
+      const response = await fetch(`${API_BASE}/todos/user/${username}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      return response.ok
     } catch (err) {
-      return []
+      console.error('DELETE all error:', err)
+      return false
+    }
+  },
+
+  // Create user
+  async createUser(username) {
+    try {
+      const response = await fetch(`${API_BASE}/user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
+      return response.ok
+    } catch (err) {
+      console.error('Create user error:', err)
+      return false
     }
   }
 }
