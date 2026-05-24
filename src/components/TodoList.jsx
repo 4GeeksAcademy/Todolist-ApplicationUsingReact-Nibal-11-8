@@ -6,7 +6,7 @@ const TodoList = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [username] = useState('nibal-' + Math.random().toString(36).substr(2, 9))
-  const [userCreated, setUserCreated] = useState(false)
+  const [userCreated, setUserCreated] = useState(true) // Changed to true by default
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -33,6 +33,7 @@ const TodoList = () => {
     } catch (err) {
       setError('Failed to create/load user: ' + err.message)
       console.error('User creation error:', err)
+      setUserCreated(true) // Allow typing even if error
     } finally {
       setLoading(false)
     }
@@ -177,8 +178,7 @@ const TodoList = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={addTodo}
             placeholder="What needs to be done?"
-            disabled={!userCreated || loading}
-            className="w-full px-4 py-3 text-lg text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent disabled:opacity-50"
+            className="w-full px-4 py-3 text-lg text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent"
           />
         </div>
 
