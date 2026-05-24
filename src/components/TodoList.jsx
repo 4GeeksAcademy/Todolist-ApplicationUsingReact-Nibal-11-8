@@ -6,10 +6,9 @@ const TodoList = () => {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
 
-  const API_BASE = 'https://playground.4geeks.com/apis/fake/todos'
+  const API_BASE = 'https://assets.breatheco.de/apis/fake/todos'
 
   useEffect(() => {
-    // Load or create username in localStorage
     let savedUsername = localStorage.getItem('todoUsername')
     if (!savedUsername) {
       savedUsername = 'user_' + Math.random().toString(36).substring(2, 15)
@@ -27,20 +26,21 @@ const TodoList = () => {
   const initializeApp = async () => {
     try {
       setLoading(true)
-      // Load existing todos or create empty list
-      const response = await fetch(`${API_BASE}/user/${username}`)
       
+      // First create the user
+      await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([])
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Then get todos
+      const response = await fetch(`${API_BASE}/user/${username}`)
       if (response.ok) {
         const data = await response.json()
         setTodos(Array.isArray(data) ? data : [])
-      } else {
-        // Create new user with empty list
-        await fetch(`${API_BASE}/user/${username}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify([])
-        })
-        setTodos([])
       }
       setLoading(false)
     } catch (err) {
@@ -59,12 +59,9 @@ const TodoList = () => {
       
       if (response.ok) {
         setTodos(updatedTodos)
-        return true
       }
-      return false
     } catch (err) {
       console.error('Save error:', err)
-      return false
     }
   }
 
@@ -72,7 +69,6 @@ const TodoList = () => {
     if (e.key === 'Enter' && newTodo.trim() !== '') {
       const newTask = { label: newTodo.trim(), done: false }
       const updatedTodos = [...todos, newTask]
-      
       setNewTodo('')
       await saveTodos(updatedTodos)
     }
