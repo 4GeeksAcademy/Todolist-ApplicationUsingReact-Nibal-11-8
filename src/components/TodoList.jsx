@@ -7,7 +7,7 @@ const TodoList = () => {
   const [error, setError] = useState('')
   const username = 'alesanchezr'
 
-  const API_BASE = 'https://playground.4geeks.com/api'
+  const API_BASE = 'https://playground.4geeks.com/todo'
 
   useEffect(() => {
     loadTodos()
@@ -22,7 +22,7 @@ const TodoList = () => {
       
       if (response.ok) {
         const data = await response.json()
-        setTodos(Array.isArray(data) ? data : [])
+        setTodos(Array.isArray(data.todos) ? data.todos : [])
       } else {
         setTodos([])
       }
@@ -40,7 +40,7 @@ const TodoList = () => {
         setError('')
         const task = {
           label: input.trim(),
-          is_done: false
+          done: false
         }
 
         console.log('Adding task:', task)
@@ -97,7 +97,7 @@ const TodoList = () => {
         method: 'PUT',
         body: JSON.stringify({
           label: todo.label,
-          is_done: !currentDone
+          done: !currentDone
         }),
         headers: {
           'Content-Type': 'application/json'
@@ -130,7 +130,7 @@ const TodoList = () => {
     }
   }
 
-  const itemsLeft = todos.filter(todo => !todo.is_done).length
+  const itemsLeft = todos.filter(todo => !todo.done).length
 
   return (
     <div className="w-full max-w-2xl">
@@ -170,7 +170,7 @@ const TodoList = () => {
                   <TodoItem
                     key={todo.id}
                     todo={todo}
-                    onToggle={() => toggleComplete(todo.id, todo.is_done)}
+                    onToggle={() => toggleComplete(todo.id, todo.done)}
                     onDelete={() => deleteTodo(todo.id)}
                   />
                 ))
@@ -208,14 +208,14 @@ const TodoItem = ({ todo, onToggle, onDelete }) => {
     >
       <input
         type="checkbox"
-        checked={todo.is_done}
+        checked={todo.done}
         onChange={onToggle}
         className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
       />
 
       <span
         className={`flex-1 text-lg ${
-          todo.is_done
+          todo.done
             ? 'line-through text-gray-400'
             : 'text-gray-700'
         }`}
