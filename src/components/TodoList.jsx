@@ -5,7 +5,7 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [username] = useState('nibal')
+  const username = 'nibal'
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,47 +18,44 @@ const TodoList = () => {
       setLoading(true)
       setError('')
       
-      await createUser()
-      await loadTodos()
-    } catch (err) {
-      setError(err.message)
-      setLoading(false)
-    }
-  }
-
-  const createUser = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/user/${username}`, {
-        method: 'POST'
+      const createRes = await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
 
-      if (!response.ok && response.status !== 400) {
-        throw new Error('Could not create user')
+      if (createRes.status !== 201 && createRes.status !== 400) {
+        const errorData = await createRes.text()
+        throw new Error(`User creation failed: ${errorData}`)
       }
 
-      return true
-    } catch (err) {
-      throw err
-    }
-  }
-
-  const loadTodos = async () => {
-    try {
-      setLoading(true)
-      setError('')
+      await new Promise(resolve => setTimeout(resolve, 500))
       
-      const response = await fetch(`${API_BASE}/todos/${username}`)
-
-      if (!response.ok) {
-        throw new Error('Could not load tasks')
+      const loadRes = await fetch(`${API_BASE}/todos/${username}`)
+      if (!loadRes.ok) {
+        throw new Error('Failed to load todos')
       }
 
-      const data = await response.json()
+      const data = await loadRes.json()
       setTodos(data.todos || [])
       setLoading(false)
     } catch (err) {
       setError(err.message)
       setLoading(false)
+    }
+  }
+
+  const loadTodos = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/todos/${username}`)
+      if (!response.ok) {
+        throw new Error('Failed to load todos')
+      }
+      const data = await response.json()
+      setTodos(data.todos || [])
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -80,7 +77,8 @@ const TodoList = () => {
         })
 
         if (!response.ok) {
-          throw new Error('Could not add task')
+          const errText = await response.text()
+          throw new Error(errText || 'Failed to add task')
         }
 
         setInput('')
@@ -99,7 +97,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Could not delete task')
+        throw new Error('Failed to delete task')
       }
 
       await loadTodos()
@@ -129,7 +127,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Could not update task')
+        throw new Error('Failed to update task')
       }
 
       await loadTodos()
@@ -147,7 +145,7 @@ const TodoList = () => {
         })
 
         if (!response.ok) {
-          throw new Error('Could not clear tasks')
+          throw new Error('Failed to clear tasks')
         }
 
         setTodos([])
