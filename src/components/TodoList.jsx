@@ -4,13 +4,25 @@ const TodoList = () => {
   const [todos, setTodos] = useState([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
-  const username = 'nibal_' + Date.now()
+  const [username, setUsername] = useState('')
 
-  const API_URL = `https://assets.breatheco.de/apis/fake/todos/user/${username}`
+  const API_URL = username ? `https://assets.breatheco.de/apis/fake/todos/user/${username}` : null
 
   useEffect(() => {
-    initializeApp()
+    // Load username from localStorage or create new one
+    let savedUsername = localStorage.getItem('todoUsername')
+    if (!savedUsername) {
+      savedUsername = 'nibal_' + Date.now()
+      localStorage.setItem('todoUsername', savedUsername)
+    }
+    setUsername(savedUsername)
   }, [])
+
+  useEffect(() => {
+    if (username) {
+      initializeApp()
+    }
+  }, [username])
 
   const initializeApp = async () => {
     try {
