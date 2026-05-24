@@ -28,6 +28,7 @@ const TodoList = () => {
       }
       setLoading(false)
     } catch (err) {
+      console.error('Load error:', err)
       setError(err.message)
       setLoading(false)
     }
@@ -42,6 +43,7 @@ const TodoList = () => {
           is_done: false
         }
 
+        console.log('Adding task:', task)
         const response = await fetch(`${API_BASE}/todos/${username}`, {
           method: 'POST',
           body: JSON.stringify(task),
@@ -50,13 +52,18 @@ const TodoList = () => {
           }
         })
 
+        console.log('Response status:', response.status)
+        const responseData = await response.json()
+        console.log('Response data:', responseData)
+
         if (response.ok) {
           setInput('')
           await loadTodos()
         } else {
-          throw new Error('Failed to add task')
+          setError('Failed to add task: ' + (responseData.msg || response.statusText))
         }
       } catch (err) {
+        console.error('Add error:', err)
         setError(err.message)
       }
     }
