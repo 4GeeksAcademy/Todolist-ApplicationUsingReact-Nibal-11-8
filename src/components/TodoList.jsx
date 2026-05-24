@@ -6,8 +6,6 @@ const TodoList = () => {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
 
-  const API_URL = username ? `https://playground.4geeks.com/todo/todos/${username}` : null
-
   useEffect(() => {
     // Load username from localStorage or create new one
     let savedUsername = localStorage.getItem('todoUsername')
@@ -20,128 +18,73 @@ const TodoList = () => {
 
   useEffect(() => {
     if (username) {
-      initializeApp()
+      loadTodos()
     }
   }, [username])
 
-  const initializeApp = async () => {
+  const loadTodos = async () => {
     try {
       setLoading(true)
-      // Create user first
-      await fetch(`https://playground.4geeks.com/todo/user/${username}`, {
-        method: 'POST'
-      })
+      const API_URL = `https://playground.4geeks.com/apis/fake/todos/user/${username}`
       
-      // Wait a bit for server
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Then load todos
       const res = await fetch(API_URL)
       if (res.ok) {
         const data = await res.json()
-        setTodos(Array.isArray(data.todos) ? data.todos : [])
+        setTodos(Array.isArray(data) ? data : [])
       } else {
+        // Create user if doesn't exist
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([])
+        })
         setTodos([])
       }
       setLoading(false)
     } catch (err) {
-      console.error(err)
+      console.error('Load error:', err)
       setLoading(false)
     }
   }
 
-  const updateTodos = async (next) => {
-    setTodos(next)
-    
-    // Update each todo on server
-    for (const todo of next) {
-      try {
-        await fetch(`https://playground.4geeks.com/todo/todos/${todo.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(todo)
-        })
-      } catch (err) {
-        console.error('Update error:', err)
+  const saveTodosToAPI = async (newTodos) => {
+    try {
+      const API_URL = `https://playground.4geeks.com/apis/fake/todos/user/${username}`
+      const response = await fetch(API_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTodos)
+      })
+      if (response.ok) {
+        setTodos(newTodos)
       }
+    } catch (err) {
+      console.error('Save error:', err)
     }
   }
 
   const handleAdd = async (e) => {
     if (e.key === 'Enter' && newTodo.trim() !== '') {
-      try {
-        const task = {
-          label: newTodo.trim(),
-          done: false
-        }
-
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(task)
-        })
-
-        if (response.ok) {
-          setNewTodo('')
-          // Reload todos
-          const res = await fetch(API_URL)
-          const data = await res.json()
-          setTodos(Array.isArray(data.todos) ? data.todos : [])
-        }
-      } catch (err) {
-        console.error('Add error:', err)
-      }
+      const newTodos = [...todos, { label: newTodo.trim(), done: false }]
+      setNewTodo('')
+      await saveTodosToAPI(newTodos)
     }
   }
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`https://playground.4geeks.com/todo/todos/${id}`, {
-        method: 'DELETE'
-      })
-      // Reload todos
-      const res = await fetch(API_URL)
-      const data = await res.json()
-      setTodos(Array.isArray(data.todos) ? data.todos : [])
-    } catch (err) {
-      console.error('Delete error:', err)
-    }
+  const handleDelete = async (idx) => {
+    const newTodos = todos.filter((_, i) => i !== idx)
+    await saveTodosToAPI(newTodos)
   }
 
-  const toggleDone = async (id, currentDone) => {
-    try {
-      const todo = todos.find(t => t.id === id)
-      if (!todo) return
-
-      await fetch(`https://playground.4geeks.com/todo/todos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          label: todo.label,
-          done: !currentDone
-        })
-      })
-      // Reload todos
-      const res = await fetch(API_URL)
-      const data = await res.json()
-      setTodos(Array.isArray(data.todos) ? data.todos : [])
-    } catch (err) {
-      console.error('Toggle error:', err)
-    }
+  const toggleDone = async (idx) => {
+    const newTodos = [...todos]
+    newTodos[idx].done = !newTodos[idx].done
+    await saveTodosToAPI(newTodos)
   }
 
   const clearAll = async () => {
     if (window.confirm('Delete all tasks?')) {
-      try {
-        for (const todo of todos) {
-          await fetch(`https://playground.4geeks.com/todo/todos/${todo.id}`, {
-            method: 'DELETE'
-          })
-        }
-        setTodos([])
-      } catch (err) {
-        console.error('Clear error:', err)
-      }
+      await saveTodosToAPI([])
     }
   }
 
@@ -173,15 +116,15 @@ const TodoList = () => {
                   <p className="text-lg">No tasks, add a task</p>
                 </div>
               ) : (
-                todos.map((todo) => (
+                todos.map((todo, idx) => (
                   <div
-                    key={todo.id}
+                    key={idx}
                     className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={todo.done}
-                      onChange={() => toggleDone(todo.id, todo.done)}
+                      onChange={() => toggleDone(idx)}
                       className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
                     />
                     <span
@@ -194,7 +137,7 @@ const TodoList = () => {
                       {todo.label}
                     </span>
                     <button
-                      onClick={() => handleDelete(todo.id)}
+                      onClick={() => handleDelete(idx)}
                       className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xl"
                     >
                       ×
