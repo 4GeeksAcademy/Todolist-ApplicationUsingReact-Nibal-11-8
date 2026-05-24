@@ -1,30 +1,43 @@
 // API configuration and methods
-const API_BASE = 'https://assets.breatheco.de/apis/fake/todos'
+const API_BASE = 'https://jsonplaceholder.typicode.com'
 
 export const todoAPI = {
   async createUser(username) {
-    const response = await fetch(`${API_BASE}/user/${username}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify([])
-    })
-    return response.ok
+    // JSONPlaceholder doesn't require user creation
+    return true
   },
 
   async getTodos(username) {
-    const response = await fetch(`${API_BASE}/user/${username}`)
-    if (response.ok) {
-      return await response.json()
+    try {
+      const response = await fetch(`${API_BASE}/todos?userId=1`)
+      if (response.ok) {
+        const data = await response.json()
+        return data.slice(0, 5) // Get first 5 todos
+      }
+      return []
+    } catch (err) {
+      console.error('Get error:', err)
+      return []
     }
-    return []
   },
 
   async saveTodos(username, todos) {
-    const response = await fetch(`${API_BASE}/user/${username}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(todos)
-    })
-    return response.ok
+    try {
+      // Save to localStorage as fallback since JSONPlaceholder is read-only
+      localStorage.setItem(`todos_${username}`, JSON.stringify(todos))
+      return true
+    } catch (err) {
+      console.error('Save error:', err)
+      return false
+    }
+  },
+
+  async loadFromStorage(username) {
+    try {
+      const stored = localStorage.getItem(`todos_${username}`)
+      return stored ? JSON.parse(stored) : []
+    } catch (err) {
+      return []
+    }
   }
 }
