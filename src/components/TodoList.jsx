@@ -5,7 +5,7 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const username = 'nibal'
+  const [username] = useState('alesanchezr')
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,25 +18,6 @@ const TodoList = () => {
       setLoading(true)
       setError('')
       
-      // Step 1: Create user (must be done first)
-      const createRes = await fetch(`${API_BASE}/user/${username}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      })
-
-      // Accept both 201 (created) and 400 (already exists)
-      if (createRes.status !== 201 && createRes.status !== 400) {
-        const errorData = await createRes.json()
-        throw new Error(errorData.detail || 'Failed to initialize user')
-      }
-
-      // Step 2: Wait a moment for user to be ready
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Step 3: Load todos
       await loadTodos()
       setLoading(false)
     } catch (err) {
@@ -50,14 +31,14 @@ const TodoList = () => {
       const response = await fetch(`${API_BASE}/todos/${username}`)
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to load todos')
+        throw new Error('Could not load todos')
       }
 
       const data = await response.json()
-      setTodos(data.todos || [])
+      setTodos(Array.isArray(data.todos) ? data.todos : [])
     } catch (err) {
       setError(err.message)
+      setTodos([])
     }
   }
 
@@ -79,8 +60,7 @@ const TodoList = () => {
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.detail || 'Failed to add task')
+          throw new Error('Could not add task')
         }
 
         setInput('')
@@ -99,8 +79,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to delete task')
+        throw new Error('Could not delete task')
       }
 
       await loadTodos()
@@ -130,8 +109,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to update task')
+        throw new Error('Could not update task')
       }
 
       await loadTodos()
@@ -141,20 +119,15 @@ const TodoList = () => {
   }
 
   const clearAllTodos = async () => {
-    if (window.confirm('Are you sure you want to delete ALL tasks? This cannot be undone!')) {
+    if (window.confirm('Are you sure you want to delete ALL tasks?')) {
       try {
         setError('')
-        const response = await fetch(`${API_BASE}/user/${username}`, {
-          method: 'DELETE'
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.detail || 'Failed to clear tasks')
+        for (const todo of todos) {
+          await fetch(`${API_BASE}/todos/${todo.id}`, {
+            method: 'DELETE'
+          })
         }
-
         setTodos([])
-        await initializeApp()
       } catch (err) {
         setError(err.message)
       }
@@ -221,10 +194,6 @@ const TodoList = () => {
                 </button>
               )}
             </div>
-          </div>
-
-          <div className="mt-6 text-center text-gray-500 text-sm">
-            <p>Synced with 4Geeks API</p>
           </div>
         </>
       )}
