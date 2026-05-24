@@ -5,7 +5,7 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [username] = useState('user_' + Math.random().toString(36).substr(2, 9))
+  const [username] = useState('nibal')
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,28 +18,27 @@ const TodoList = () => {
       setLoading(true)
       setError('')
       
-      // First, try to get the user (which creates if doesn't exist)
-      const response = await fetch(`${API_BASE}/user/${username}`)
-      
-      if (response.status === 404) {
-        // User doesn't exist, create it
-        const createRes = await fetch(`${API_BASE}/user/${username}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({})
-        })
-        
-        if (!createRes.ok) {
-          throw new Error('Could not initialize user')
-        }
-      }
-
+      await createUser()
       await loadTodos()
     } catch (err) {
       setError(err.message)
       setLoading(false)
+    }
+  }
+
+  const createUser = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST'
+      })
+
+      if (!response.ok && response.status !== 400) {
+        throw new Error('Could not create user')
+      }
+
+      return true
+    } catch (err) {
+      throw err
     }
   }
 
@@ -152,7 +151,6 @@ const TodoList = () => {
         }
 
         setTodos([])
-        await initializeApp()
       } catch (err) {
         setError(err.message)
       }
@@ -164,9 +162,6 @@ const TodoList = () => {
   return (
     <div className="w-full max-w-2xl">
       <h1 className="text-6xl font-light text-gray-300 text-center mb-2 tracking-widest">todos</h1>
-      <p className="text-center text-gray-400 text-sm mb-6">
-        {loading ? 'Loading...' : `User: ${username}`}
-      </p>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
