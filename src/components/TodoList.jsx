@@ -4,7 +4,8 @@ const TodoList = () => {
   const [todos, setTodos] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')n  const username = `nibal_${Date.now()}`
+  const [error, setError] = useState('')
+  const username = `nibal_${Date.now()}`
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
