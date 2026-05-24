@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react'
 
 const TodoList = () => {
   const [todos, setTodos] = useState([])
-  const [input, setInput] = useState('')
+  const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const username = `user_${Date.now()}`
+  const username = 'nibal_' + Date.now()
 
-  const API_BASE = 'https://playground.4geeks.com/todo'
+  const API_URL = `https://assets.breatheco.de/apis/fake/todos/user/${username}`
 
   useEffect(() => {
     initializeApp()
@@ -16,160 +15,77 @@ const TodoList = () => {
   const initializeApp = async () => {
     try {
       setLoading(true)
-      setError('')
-      
-      // Create user first
-      await fetch(`${API_BASE}/user/${username}`, {
-        method: 'POST'
-      })
-      
-      // Wait for creation
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Then load todos
-      await loadTodos()
-    } catch (err) {
-      console.error('Init error:', err)
-      setError(err.message)
-      setLoading(false)
-    }
-  }
-
-  const loadTodos = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/todos/${username}`)
-      
-      if (response.ok) {
-        const data = await response.json()
-        setTodos(Array.isArray(data.todos) ? data.todos : [])
-      } else {
-        setTodos([])
-      }
-      setLoading(false)
-    } catch (err) {
-      console.error('Load error:', err)
-      setError(err.message)
-      setLoading(false)
-    }
-  }
-
-  const addTodo = async (e) => {
-    if (e.key === 'Enter' && input.trim() !== '') {
-      try {
-        setError('')
-        const task = {
-          label: input.trim(),
-          done: false
-        }
-
-        const response = await fetch(`${API_BASE}/todos/${username}`, {
+      const res = await fetch(API_URL)
+      if (res.status === 404) {
+        // Create user
+        await fetch(API_URL, {
           method: 'POST',
-          body: JSON.stringify(task),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([])
         })
-
-        if (response.ok) {
-          setInput('')
-          await loadTodos()
-        } else {
-          const data = await response.json()
-          setError('Failed to add task: ' + (data.msg || response.statusText))
-        }
-      } catch (err) {
-        console.error('Add error:', err)
-        setError(err.message)
-      }
-    }
-  }
-
-  const deleteTodo = async (id) => {
-    try {
-      setError('')
-      const response = await fetch(`${API_BASE}/todos/${id}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        await loadTodos()
-      } else {
-        throw new Error('Failed to delete')
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  const toggleComplete = async (id, currentDone) => {
-    try {
-      setError('')
-      const todo = todos.find(t => t.id === id)
-      
-      if (!todo) return
-
-      const response = await fetch(`${API_BASE}/todos/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          label: todo.label,
-          done: !currentDone
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        await loadTodos()
-      } else {
-        throw new Error('Failed to update')
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  const clearAllTodos = async () => {
-    if (window.confirm('Delete all tasks?')) {
-      try {
-        setError('')
-        for (const todo of todos) {
-          await fetch(`${API_BASE}/todos/${todo.id}`, {
-            method: 'DELETE'
-          })
-        }
         setTodos([])
-      } catch (err) {
-        setError(err.message)
+      } else {
+        const data = await res.json()
+        setTodos(Array.isArray(data) ? data : [])
       }
+      setLoading(false)
+    } catch (err) {
+      console.error(err)
+      setLoading(false)
     }
   }
 
-  const itemsLeft = todos.filter(todo => !todo.done).length
+  const updateTodos = async (next) => {
+    setTodos(next)
+    await fetch(API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next)
+    })
+  }
+
+  const handleAdd = async (e) => {
+    if (e.key === 'Enter' && newTodo.trim() !== '') {
+      const next = [...todos, { label: newTodo.trim(), done: false }]
+      setNewTodo('')
+      await updateTodos(next)
+    }
+  }
+
+  const handleDelete = async (idx) => {
+    const next = todos.filter((_, i) => i !== idx)
+    await updateTodos(next)
+  }
+
+  const toggleDone = async (idx) => {
+    const next = [...todos]
+    next[idx].done = !next[idx].done
+    await updateTodos(next)
+  }
+
+  const clearAll = async () => {
+    if (window.confirm('Delete all tasks?')) {
+      await updateTodos([])
+    }
+  }
+
+  const itemsLeft = todos.filter(t => !t.done).length
 
   return (
     <div className="w-full max-w-2xl">
-      <h1 className="text-6xl font-light text-gray-300 text-center mb-2 tracking-widest">todos</h1>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+      <h1 className="text-6xl font-light text-gray-300 text-center mb-8 tracking-widest">todos</h1>
 
       {loading ? (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded text-center">
-          Loading...
-        </div>
+        <div className="text-center text-gray-400">Loading...</div>
       ) : (
         <>
           <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-gray-200">
               <input
                 type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={addTodo}
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                onKeyPress={handleAdd}
                 placeholder="What needs to be done?"
                 className="w-full px-4 py-3 text-lg text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent"
               />
@@ -181,25 +97,43 @@ const TodoList = () => {
                   <p className="text-lg">No tasks, add a task</p>
                 </div>
               ) : (
-                todos.map(todo => (
-                  <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    onToggle={() => toggleComplete(todo.id, todo.done)}
-                    onDelete={() => deleteTodo(todo.id)}
-                  />
+                todos.map((todo, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={todo.done}
+                      onChange={() => toggleDone(idx)}
+                      className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
+                    />
+                    <span
+                      className={`flex-1 text-lg ${
+                        todo.done
+                          ? 'line-through text-gray-400'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      {todo.label}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(idx)}
+                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xl"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))
               )}
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-              <p className="text-sm text-gray-500 font-light">
-                {itemsLeft} {itemsLeft === 1 ? 'item' : 'items'} left
-              </p>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-sm text-gray-500">
+              <span>{itemsLeft} {itemsLeft === 1 ? 'item' : 'items'} left</span>
               {todos.length > 0 && (
                 <button
-                  onClick={clearAllTodos}
-                  className="text-sm text-red-600 hover:text-red-800 font-semibold transition"
+                  onClick={clearAll}
+                  className="text-red-600 hover:text-red-800 font-semibold"
                 >
                   Clear all
                 </button>
@@ -207,44 +141,6 @@ const TodoList = () => {
             </div>
           </div>
         </>
-      )}
-    </div>
-  )
-}
-
-const TodoItem = ({ todo, onToggle, onDelete }) => {
-  const [isHovering, setIsHovering] = useState(false)
-
-  return (
-    <div
-      className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors duration-200"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
-      <input
-        type="checkbox"
-        checked={todo.done}
-        onChange={onToggle}
-        className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
-      />
-
-      <span
-        className={`flex-1 text-lg ${
-          todo.done
-            ? 'line-through text-gray-400'
-            : 'text-gray-700'
-        }`}
-      >
-        {todo.label}
-      </span>
-
-      {isHovering && (
-        <button
-          onClick={onDelete}
-          className="text-gray-400 hover:text-red-500 flex-shrink-0 text-xl"
-        >
-          ×
-        </button>
       )}
     </div>
   )
