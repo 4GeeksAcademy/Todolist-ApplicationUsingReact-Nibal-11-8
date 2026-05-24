@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react'
 const TodoList = () => {
   const [todos, setTodos] = useState([])
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [username] = useState('nibal-' + Math.random().toString(36).substr(2, 9))
-  const [userCreated, setUserCreated] = useState(true) // Changed to true by default
+  const [userCreated, setUserCreated] = useState(false)
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,23 +18,26 @@ const TodoList = () => {
   const createUser = async () => {
     try {
       setLoading(true)
+      setError('')
+      console.log('Creating user:', username)
+      
       const response = await fetch(`${API_BASE}/user/${username}`, {
         method: 'POST'
       })
 
-      if (response.ok) {
+      console.log('Create user response:', response.status)
+
+      if (response.ok || response.status === 400) {
+        // 400 means user already exists (which is fine)
+        console.log('User created/loaded successfully')
         setUserCreated(true)
-        loadTodos()
-      } else if (response.status === 400) {
-        // User already exists
-        setUserCreated(true)
-        loadTodos()
+        await loadTodos()
+      } else {
+        throw new Error(`Failed with status ${response.status}`)
       }
     } catch (err) {
-      setError('Failed to create/load user: ' + err.message)
+      setError('⚠️ Failed to initialize: ' + err.message)
       console.error('User creation error:', err)
-      setUserCreated(true) // Allow typing even if error
-    } finally {
       setLoading(false)
     }
   }
@@ -43,16 +46,22 @@ const TodoList = () => {
     try {
       setLoading(true)
       setError('')
+      console.log('Loading todos for:', username)
+      
       const response = await fetch(`${API_BASE}/todos/${username}`)
+      console.log('Load todos response:', response.status)
 
-      if (!response.ok) throw new Error('Failed to load todos')
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`)
+      }
 
       const data = await response.json()
+      console.log('Todos loaded:', data)
       setTodos(data.todos || [])
+      setLoading(false)
     } catch (err) {
-      setError('Failed to load todos: ' + err.message)
+      setError('⚠️ Failed to load todos: ' + err.message)
       console.error('Load todos error:', err)
-    } finally {
       setLoading(false)
     }
   }
@@ -66,6 +75,8 @@ const TodoList = () => {
           done: false
         }
 
+        console.log('Adding task:', task)
+
         const response = await fetch(`${API_BASE}/todos/${username}`, {
           method: 'POST',
           body: JSON.stringify(task),
@@ -74,12 +85,18 @@ const TodoList = () => {
           }
         })
 
-        if (!response.ok) throw new Error('Failed to add task')
+        console.log('Add task response:', response.status)
 
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`)
+        }
+
+        const data = await response.json()
+        console.log('Task added:', data)
         setInput('')
         await loadTodos()
       } catch (err) {
-        setError('Failed to add task: ' + err.message)
+        setError('⚠️ Failed to add task: ' + err.message)
         console.error('Add todo error:', err)
       }
     }
@@ -88,15 +105,22 @@ const TodoList = () => {
   const deleteTodo = async (id) => {
     try {
       setError('')
+      console.log('Deleting task:', id)
+
       const response = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'DELETE'
       })
 
-      if (!response.ok) throw new Error('Failed to delete task')
+      console.log('Delete response:', response.status)
 
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`)
+      }
+
+      console.log('Task deleted')
       await loadTodos()
     } catch (err) {
-      setError('Failed to delete task: ' + err.message)
+      setError('⚠️ Failed to delete task: ' + err.message)
       console.error('Delete todo error:', err)
     }
   }
@@ -106,6 +130,12 @@ const TodoList = () => {
       setError('')
       const todoToUpdate = todos.find(t => t.id === id)
       
+      if (!todoToUpdate) {
+        throw new Error('Task not found')
+      }
+
+      console.log('Updating task:', id, 'done:', !currentDone)
+
       const response = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -117,11 +147,16 @@ const TodoList = () => {
         }
       })
 
-      if (!response.ok) throw new Error('Failed to update task')
+      console.log('Update response:', response.status)
 
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`)
+      }
+
+      console.log('Task updated')
       await loadTodos()
     } catch (err) {
-      setError('Failed to update task: ' + err.message)
+      setError('⚠️ Failed to update task: ' + err.message)
       console.error('Toggle todo error:', err)
     }
   }
@@ -130,17 +165,22 @@ const TodoList = () => {
     if (window.confirm('Are you sure you want to delete ALL tasks? This cannot be undone!')) {
       try {
         setError('')
+        console.log('Clearing all tasks for:', username)
+
         const response = await fetch(`${API_BASE}/user/${username}`, {
           method: 'DELETE'
         })
 
-        if (!response.ok) throw new Error('Failed to clear all tasks')
+        console.log('Clear all response:', response.status)
+
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`)
+        }
 
         setTodos([])
-        // Recreate user for future use
-        await createUser()
+        console.log('All tasks cleared')
       } catch (err) {
-        setError('Failed to clear all tasks: ' + err.message)
+        setError('⚠️ Failed to clear all tasks: ' + err.message)
         console.error('Clear all error:', err)
       }
     }
@@ -152,76 +192,79 @@ const TodoList = () => {
     <div className="w-full max-w-2xl">
       {/* Title */}
       <h1 className="text-6xl font-light text-gray-300 text-center mb-2 tracking-widest">todos</h1>
-      <p className="text-center text-gray-400 text-sm mb-6">User: <span className="font-semibold">{username}</span></p>
+      <p className="text-center text-gray-400 text-sm mb-6">
+        {loading ? 'Initializing...' : `User: ${username}`}
+      </p>
 
       {/* Error Message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
       {/* Loading State */}
-      {loading && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 text-center">
-          <i className="fas fa-spinner fa-spin mr-2"></i> Loading...
+      {loading ? (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded text-center">
+          <i className="fas fa-spinner fa-spin mr-2"></i> Initializing your TODO list...
         </div>
-      )}
-
-      {/* Main Card */}
-      <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
-        {/* Input Section */}
-        <div className="p-6 border-b border-gray-200">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={addTodo}
-            placeholder="What needs to be done?"
-            className="w-full px-4 py-3 text-lg text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent"
-          />
-        </div>
-
-        {/* Todos List */}
-        <div className="divide-y divide-gray-200">
-          {todos.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">
-              <p className="text-lg">No tasks, add a task</p>
-            </div>
-          ) : (
-            todos.map(todo => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={() => toggleComplete(todo.id, todo.done)}
-                onDelete={() => deleteTodo(todo.id)}
+      ) : (
+        <>
+          {/* Main Card */}
+          <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
+            {/* Input Section */}
+            <div className="p-6 border-b border-gray-200">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={addTodo}
+                placeholder="What needs to be done?"
+                className="w-full px-4 py-3 text-lg text-gray-700 placeholder-gray-400 focus:outline-none bg-transparent"
               />
-            ))
-          )}
-        </div>
+            </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-          <p className="text-sm text-gray-500 font-light">
-            {itemsLeft} {itemsLeft === 1 ? 'item' : 'items'} left
-          </p>
-          {todos.length > 0 && (
-            <button
-              onClick={clearAllTodos}
-              disabled={loading}
-              className="text-sm text-red-600 hover:text-red-800 font-semibold disabled:opacity-50 transition"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      </div>
+            {/* Todos List */}
+            <div className="divide-y divide-gray-200">
+              {todos.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  <p className="text-lg">No tasks, add a task</p>
+                </div>
+              ) : (
+                todos.map(todo => (
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    onToggle={() => toggleComplete(todo.id, todo.done)}
+                    onDelete={() => deleteTodo(todo.id)}
+                  />
+                ))
+              )}
+            </div>
 
-      {/* Info */}
-      <div className="mt-6 text-center text-gray-500 text-sm">
-        <p>✨ Synced with 4Geeks API</p>
-        <p className="mt-1">All changes are saved to the server automatically</p>
-      </div>
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+              <p className="text-sm text-gray-500 font-light">
+                {itemsLeft} {itemsLeft === 1 ? 'item' : 'items'} left
+              </p>
+              {todos.length > 0 && (
+                <button
+                  onClick={clearAllTodos}
+                  className="text-sm text-red-600 hover:text-red-800 font-semibold transition"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="mt-6 text-center text-gray-500 text-sm">
+            <p>✨ Synced with 4Geeks API</p>
+            <p className="mt-1">All changes are saved to the server automatically</p>
+          </div>
+        </>
+      )}
     </div>
   )
 }
