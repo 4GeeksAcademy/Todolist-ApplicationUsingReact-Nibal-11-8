@@ -6,11 +6,13 @@ const TodoList = () => {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
 
+  const API_BASE = 'https://playground.4geeks.com/todo'
+
   useEffect(() => {
-    // Load username from localStorage or create new one
+    // Load or create username in localStorage
     let savedUsername = localStorage.getItem('todoUsername')
     if (!savedUsername) {
-      savedUsername = 'nibal_' + Date.now()
+      savedUsername = 'user_' + Date.now()
       localStorage.setItem('todoUsername', savedUsername)
     }
     setUsername(savedUsername)
@@ -18,27 +20,32 @@ const TodoList = () => {
 
   useEffect(() => {
     if (username) {
-      loadTodos()
+      initializeApp()
     }
   }, [username])
 
-  const loadTodos = async () => {
+  const initializeApp = async () => {
     try {
       setLoading(true)
-      const API_URL = `https://playground.4geeks.com/apis/fake/todos/user/${username}`
+      // First create the user
+      await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST'
+      })
       
-      const res = await fetch(API_URL)
-      if (res.ok) {
-        const data = await res.json()
+      // Then load todos
+      await loadTodos()
+    } catch (err) {
+      console.error('Init error:', err)
+      setLoading(false)
+    }
+  }
+
+  const loadTodos = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/todos/${username}`)
+      if (response.ok) {
+        const data = await response.json()
         setTodos(Array.isArray(data) ? data : [])
-      } else {
-        // Create user if doesn't exist
-        await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify([])
-        })
-        setTodos([])
       }
       setLoading(false)
     } catch (err) {
@@ -47,44 +54,79 @@ const TodoList = () => {
     }
   }
 
-  const saveTodosToAPI = async (newTodos) => {
-    try {
-      const API_URL = `https://playground.4geeks.com/apis/fake/todos/user/${username}`
-      const response = await fetch(API_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTodos)
-      })
-      if (response.ok) {
-        setTodos(newTodos)
-      }
-    } catch (err) {
-      console.error('Save error:', err)
-    }
-  }
-
   const handleAdd = async (e) => {
     if (e.key === 'Enter' && newTodo.trim() !== '') {
-      const newTodos = [...todos, { label: newTodo.trim(), done: false }]
-      setNewTodo('')
-      await saveTodosToAPI(newTodos)
+      try {
+        const task = {
+          label: newTodo.trim(),
+          done: false
+        }
+
+        const response = await fetch(`${API_BASE}/todos/${username}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(task)
+        })
+
+        if (response.ok) {
+          setNewTodo('')
+          await loadTodos()
+        }
+      } catch (err) {
+        console.error('Add error:', err)
+      }
     }
   }
 
-  const handleDelete = async (idx) => {
-    const newTodos = todos.filter((_, i) => i !== idx)
-    await saveTodosToAPI(newTodos)
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        await loadTodos()
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+    }
   }
 
-  const toggleDone = async (idx) => {
-    const newTodos = [...todos]
-    newTodos[idx].done = !newTodos[idx].done
-    await saveTodosToAPI(newTodos)
+  const toggleDone = async (id, currentDone) => {
+    try {
+      const todo = todos.find(t => t.id === id)
+      if (!todo) return
+
+      const response = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: todo.label,
+          done: !currentDone
+        })
+      })
+
+      if (response.ok) {
+        await loadTodos()
+      }
+    } catch (err) {
+      console.error('Toggle error:', err)
+    }
   }
 
   const clearAll = async () => {
     if (window.confirm('Delete all tasks?')) {
-      await saveTodosToAPI([])
+      try {
+        const response = await fetch(`${API_BASE}/user/${username}`, {
+          method: 'DELETE'
+        })
+
+        if (response.ok) {
+          setTodos([])
+        }
+      } catch (err) {
+        console.error('Clear error:', err)
+      }
     }
   }
 
@@ -116,15 +158,15 @@ const TodoList = () => {
                   <p className="text-lg">No tasks, add a task</p>
                 </div>
               ) : (
-                todos.map((todo, idx) => (
+                todos.map((todo) => (
                   <div
-                    key={idx}
+                    key={todo.id}
                     className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={todo.done}
-                      onChange={() => toggleDone(idx)}
+                      onChange={() => toggleDone(todo.id, todo.done)}
                       className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
                     />
                     <span
@@ -137,7 +179,7 @@ const TodoList = () => {
                       {todo.label}
                     </span>
                     <button
-                      onClick={() => handleDelete(idx)}
+                      onClick={() => handleDelete(todo.id)}
                       className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xl"
                     >
                       ×
