@@ -4,8 +4,7 @@ const TodoList = () => {
   const [todos, setTodos] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [username] = useState('alesanchezr')
+  const [error, setError] = useState('')n  const username = `nibal_${Date.now()}`
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,8 +17,18 @@ const TodoList = () => {
       setLoading(true)
       setError('')
       
-      await loadTodos()
-      setLoading(false)
+      // Create new user with unique timestamp
+      const createRes = await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST'
+      })
+
+      if (createRes.status === 201 || createRes.status === 400) {
+        // Wait for server to process
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        await loadTodos()
+      } else {
+        throw new Error('Failed to create user')
+      }
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -30,15 +39,16 @@ const TodoList = () => {
     try {
       const response = await fetch(`${API_BASE}/todos/${username}`)
       
-      if (!response.ok) {
-        throw new Error('Could not load todos')
+      if (response.ok) {
+        const data = await response.json()
+        setTodos(Array.isArray(data.todos) ? data.todos : [])
+      } else {
+        setTodos([])
       }
-
-      const data = await response.json()
-      setTodos(Array.isArray(data.todos) ? data.todos : [])
+      setLoading(false)
     } catch (err) {
       setError(err.message)
-      setTodos([])
+      setLoading(false)
     }
   }
 
@@ -59,12 +69,12 @@ const TodoList = () => {
           }
         })
 
-        if (!response.ok) {
-          throw new Error('Could not add task')
+        if (response.ok) {
+          setInput('')
+          await loadTodos()
+        } else {
+          throw new Error('Failed to add task')
         }
-
-        setInput('')
-        await loadTodos()
       } catch (err) {
         setError(err.message)
       }
@@ -78,11 +88,11 @@ const TodoList = () => {
         method: 'DELETE'
       })
 
-      if (!response.ok) {
-        throw new Error('Could not delete task')
+      if (response.ok) {
+        await loadTodos()
+      } else {
+        throw new Error('Failed to delete')
       }
-
-      await loadTodos()
     } catch (err) {
       setError(err.message)
     }
@@ -91,16 +101,14 @@ const TodoList = () => {
   const toggleComplete = async (id, currentDone) => {
     try {
       setError('')
-      const todoToUpdate = todos.find(t => t.id === id)
+      const todo = todos.find(t => t.id === id)
       
-      if (!todoToUpdate) {
-        throw new Error('Task not found')
-      }
+      if (!todo) return
 
       const response = await fetch(`${API_BASE}/todos/${id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          label: todoToUpdate.label,
+          label: todo.label,
           done: !currentDone
         }),
         headers: {
@@ -108,26 +116,26 @@ const TodoList = () => {
         }
       })
 
-      if (!response.ok) {
-        throw new Error('Could not update task')
+      if (response.ok) {
+        await loadTodos()
+      } else {
+        throw new Error('Failed to update')
       }
-
-      await loadTodos()
     } catch (err) {
       setError(err.message)
     }
   }
 
   const clearAllTodos = async () => {
-    if (window.confirm('Are you sure you want to delete ALL tasks?')) {
+    if (window.confirm('Delete all tasks?')) {
       try {
         setError('')
-        for (const todo of todos) {
-          await fetch(`${API_BASE}/todos/${todo.id}`, {
-            method: 'DELETE'
-          })
+        const response = await fetch(`${API_BASE}/user/${username}`, {
+          method: 'DELETE'
+        })
+        if (response.ok) {
+          setTodos([])
         }
-        setTodos([])
       } catch (err) {
         setError(err.message)
       }
@@ -206,7 +214,7 @@ const TodoItem = ({ todo, onToggle, onDelete }) => {
 
   return (
     <div
-      className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors duration-200 group"
+      className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors duration-200"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -218,7 +226,7 @@ const TodoItem = ({ todo, onToggle, onDelete }) => {
       />
 
       <span
-        className={`flex-1 text-lg transition-all duration-200 ${
+        className={`flex-1 text-lg ${
           todo.done
             ? 'line-through text-gray-400'
             : 'text-gray-700'
@@ -230,8 +238,7 @@ const TodoItem = ({ todo, onToggle, onDelete }) => {
       {isHovering && (
         <button
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-500 transition-colors duration-200 flex-shrink-0 text-xl font-light"
-          aria-label="Delete todo"
+          className="text-gray-400 hover:text-red-500 flex-shrink-0 text-xl"
         >
           ×
         </button>
