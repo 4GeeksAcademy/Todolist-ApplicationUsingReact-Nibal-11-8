@@ -2,13 +2,22 @@
 
 // Detect if running in GitHub Codespaces or localhost
 const getAPIBase = () => {
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    // GitHub Codespaces - extract the port from current URL and replace with 3001
-    const currentUrl = window.location.origin
-    const baseUrl = currentUrl.replace(/:\d+$/, ':3001')
-    return baseUrl
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    
+    // GitHub Codespaces format: *.app.github.dev
+    if (hostname.includes('app.github.dev')) {
+      // Extract the subdomain prefix (e.g., "super-duper-giggle-9rqxxw5q9p439xg6")
+      const parts = hostname.split('.')
+      const prefix = parts[0]
+      // Construct the 3001 port URL
+      return `https://${prefix}-3001.app.github.dev`
+    }
+    
+    // Localhost development
+    return 'http://localhost:3001'
   }
-  // Localhost development
+  
   return 'http://localhost:3001'
 }
 
