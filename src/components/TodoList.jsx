@@ -5,19 +5,38 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const username = 'alesanchezr'
+  const username = `user_${Date.now()}`
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
   useEffect(() => {
-    loadTodos()
+    initializeApp()
   }, [])
 
-  const loadTodos = async () => {
+  const initializeApp = async () => {
     try {
       setLoading(true)
       setError('')
       
+      // Create user first
+      await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST'
+      })
+      
+      // Wait for creation
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Then load todos
+      await loadTodos()
+    } catch (err) {
+      console.error('Init error:', err)
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  const loadTodos = async () => {
+    try {
       const response = await fetch(`${API_BASE}/todos/${username}`)
       
       if (response.ok) {
@@ -43,7 +62,6 @@ const TodoList = () => {
           done: false
         }
 
-        console.log('Adding task:', task)
         const response = await fetch(`${API_BASE}/todos/${username}`, {
           method: 'POST',
           body: JSON.stringify(task),
@@ -52,15 +70,12 @@ const TodoList = () => {
           }
         })
 
-        console.log('Response status:', response.status)
-        const responseData = await response.json()
-        console.log('Response data:', responseData)
-
         if (response.ok) {
           setInput('')
           await loadTodos()
         } else {
-          setError('Failed to add task: ' + (responseData.msg || response.statusText))
+          const data = await response.json()
+          setError('Failed to add task: ' + (data.msg || response.statusText))
         }
       } catch (err) {
         console.error('Add error:', err)
