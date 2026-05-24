@@ -6,7 +6,7 @@ const TodoList = () => {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
 
-  const API_BASE = 'https://playground.4geeks.com/apis/fake/todos'
+  const API_BASE = 'https://playground.4geeks.com/todo'
 
   useEffect(() => {
     // Load or create username in localStorage
@@ -20,73 +20,138 @@ const TodoList = () => {
 
   useEffect(() => {
     if (username) {
-      loadTodos()
+      initializeApp()
     }
   }, [username])
 
-  const loadTodos = async () => {
+  const initializeApp = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE}/user/${username}`)
-      if (response.ok) {
-        const data = await response.json()
+      // Create user first
+      const createRes = await fetch(`${API_BASE}/user/${username}`, {
+        method: 'POST'
+      })
+      console.log('Create user response:', createRes.status)
+      
+      // Wait a moment for user to be created
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Then load todos
+      const loadRes = await fetch(`${API_BASE}/todos/${username}`)
+      console.log('Load todos response:', loadRes.status)
+      
+      if (loadRes.ok) {
+        const data = await loadRes.json()
+        console.log('Loaded todos:', data)
         setTodos(Array.isArray(data) ? data : [])
       } else {
-        // Create user if doesn't exist
-        await fetch(`${API_BASE}/user/${username}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify([])
-        })
         setTodos([])
       }
       setLoading(false)
     } catch (err) {
-      console.error('Load error:', err)
+      console.error('Init error:', err)
       setLoading(false)
     }
   }
 
-  const saveTodos = async (newTodos) => {
-    try {
-      const response = await fetch(`${API_BASE}/user/${username}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTodos)
-      })
-
-      if (response.ok) {
-        setTodos(newTodos)
-        return true
-      }
-    } catch (err) {
-      console.error('Save error:', err)
-    }
-    return false
-  }
-
   const handleAdd = async (e) => {
     if (e.key === 'Enter' && newTodo.trim() !== '') {
-      const newTodos = [...todos, { label: newTodo.trim(), done: false }]
-      setNewTodo('')
-      await saveTodos(newTodos)
+      try {
+        const task = {
+          label: newTodo.trim(),
+          done: false
+        }
+
+        const addRes = await fetch(`${API_BASE}/todos/${username}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(task)
+        })
+        console.log('Add task response:', addRes.status)
+
+        if (addRes.ok) {
+          setNewTodo('')
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          // Reload todos
+          const loadRes = await fetch(`${API_BASE}/todos/${username}`)
+          if (loadRes.ok) {
+            const data = await loadRes.json()
+            setTodos(Array.isArray(data) ? data : [])
+          }
+        }
+      } catch (err) {
+        console.error('Add error:', err)
+      }
     }
   }
 
-  const handleDelete = async (idx) => {
-    const newTodos = todos.filter((_, i) => i !== idx)
-    await saveTodos(newTodos)
+  const handleDelete = async (id) => {
+    try {
+      const delRes = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'DELETE'
+      })
+      console.log('Delete response:', delRes.status)
+
+      if (delRes.ok) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Reload todos
+        const loadRes = await fetch(`${API_BASE}/todos/${username}`)
+        if (loadRes.ok) {
+          const data = await loadRes.json()
+          setTodos(Array.isArray(data) ? data : [])
+        }
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+    }
   }
 
-  const toggleDone = async (idx) => {
-    const newTodos = [...todos]
-    newTodos[idx].done = !newTodos[idx].done
-    await saveTodos(newTodos)
+  const toggleDone = async (id, currentDone) => {
+    try {
+      const todo = todos.find(t => t.id === id)
+      if (!todo) return
+
+      const updateRes = await fetch(`${API_BASE}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: todo.label,
+          done: !currentDone
+        })
+      })
+      console.log('Toggle response:', updateRes.status)
+
+      if (updateRes.ok) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Reload todos
+        const loadRes = await fetch(`${API_BASE}/todos/${username}`)
+        if (loadRes.ok) {
+          const data = await loadRes.json()
+          setTodos(Array.isArray(data) ? data : [])
+        }
+      }
+    } catch (err) {
+      console.error('Toggle error:', err)
+    }
   }
 
   const clearAll = async () => {
     if (window.confirm('Delete all tasks?')) {
-      await saveTodos([])
+      try {
+        const clearRes = await fetch(`${API_BASE}/user/${username}`, {
+          method: 'DELETE'
+        })
+        console.log('Clear all response:', clearRes.status)
+
+        if (clearRes.ok) {
+          setTodos([])
+        }
+      } catch (err) {
+        console.error('Clear error:', err)
+      }
     }
   }
 
@@ -118,15 +183,15 @@ const TodoList = () => {
                   <p className="text-lg">No tasks, add a task</p>
                 </div>
               ) : (
-                todos.map((todo, idx) => (
+                todos.map((todo) => (
                   <div
-                    key={idx}
+                    key={todo.id}
                     className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={todo.done}
-                      onChange={() => toggleDone(idx)}
+                      onChange={() => toggleDone(todo.id, todo.done)}
                       className="w-5 h-5 text-blue-500 rounded cursor-pointer accent-blue-500 flex-shrink-0"
                     />
                     <span
@@ -139,7 +204,7 @@ const TodoList = () => {
                       {todo.label}
                     </span>
                     <button
-                      onClick={() => handleDelete(idx)}
+                      onClick={() => handleDelete(todo.id)}
                       className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xl"
                     >
                       ×
