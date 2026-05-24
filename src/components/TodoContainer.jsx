@@ -27,16 +27,13 @@ const TodoContainer = () => {
     try {
       setLoading(true)
       
-      // Try to load from localStorage first
-      let storedTodos = await todoAPI.loadFromStorage(username)
+      // Create user in backend
+      await todoAPI.createUser(username)
       
-      if (storedTodos.length === 0) {
-        // If no stored todos, fetch from API
-        const apiTodos = await todoAPI.getTodos(username)
-        storedTodos = apiTodos
-      }
+      // Fetch todos from backend API
+      const apiTodos = await todoAPI.getTodos(username)
+      setTodos(Array.isArray(apiTodos) ? apiTodos : [])
       
-      setTodos(storedTodos)
       setLoading(false)
     } catch (err) {
       console.error('Init error:', err)
@@ -44,38 +41,75 @@ const TodoContainer = () => {
     }
   }
 
-  const saveTodos = async (updatedTodos) => {
-    try {
-      await todoAPI.saveTodos(username, updatedTodos)
-      setTodos(updatedTodos)
-    } catch (err) {
-      console.error('Save error:', err)
-    }
-  }
-
   const handleAdd = async (e) => {
     if (e.key === 'Enter' && newTodo.trim() !== '') {
-      const newTask = { label: newTodo.trim(), done: false }
-      const updatedTodos = [...todos, newTask]
-      setNewTodo('')
-      await saveTodos(updatedTodos)
+      try {
+        // POST new todo to backend
+        const newTask = await todoAPI.addTodo(username, newTodo.trim())
+        
+        if (newTask) {
+          // Fetch updated list from backend
+          const updatedTodos = await todoAPI.getTodos(username)
+          setTodos(Array.isArray(updatedTodos) ? updatedTodos : [])
+          setNewTodo('')
+        }
+      } catch (err) {
+        console.error('Add error:', err)
+      }
     }
   }
 
   const handleToggle = async (idx) => {
-    const updatedTodos = [...todos]
-    updatedTodos[idx].done = !updatedTodos[idx].done
-    await saveTodos(updatedTodos)
+    try {
+      const todo = todos[idx]
+      // PUT update to backend
+      await todoAPI.updateTodo(todo.id, todo.label, !todo.done)
+      
+      // Fetch updated list from backend
+      const updatedTodos = await todoAPI.getTodos(username)
+      setTodos(Array.isArray(updatedTodos) ? updatedTodos : [])
+    } catch (err) {
+      console.error('Toggle error:', err)
+    }
   }
 
   const handleDelete = async (idx) => {
-    const updatedTodos = todos.filter((_, i) => i !== idx)
-    await saveTodos(updatedTodos)
+    try {
+      const todo = todos[idx]
+      // DELETE from backend
+      await todoAPI.deleteTodo(todo.id)
+      
+      // Fetch updated list from backend
+      const updatedTodos = await todoAPI.getTodos(username)
+      setTodos(Array.isArray(updatedTodos) ? updatedTodos : [])
+    } catch (err) {
+      console.error('Delete error:', err)
+    }
   }
 
   const handleClearAll = async () => {
     if (window.confirm('Delete all tasks?')) {
-      await saveTodos([])
+      try {
+        // DELETE all todos from backend
+        await todoAPI.deleteAllTodos(username)
+        setTodos([])
+      } catch (err) {
+        console.error('Clear all error:', err)
+      }
+    }
+  }
+
+  const handleEdit = async (idx, newLabel) => {
+    try {
+      const todo = todos[idx]
+      // PUT update to backend
+      await todoAPI.updateTodo(todo.id, newLabel, todo.done)
+      
+      // Fetch updated list from backend
+      const updatedTodos = await todoAPI.getTodos(username)
+      setTodos(Array.isArray(updatedTodos) ? updatedTodos : [])
+    } catch (err) {
+      console.error('Edit error:', err)
     }
   }
 
@@ -94,6 +128,7 @@ const TodoContainer = () => {
             todos={todos}
             onToggle={handleToggle}
             onDelete={handleDelete}
+            onEdit={handleEdit}
           />
           <TodoFooter
             itemsLeft={itemsLeft}
