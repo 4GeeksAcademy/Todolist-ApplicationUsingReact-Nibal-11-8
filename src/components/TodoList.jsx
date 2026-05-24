@@ -5,39 +5,19 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const username = `nibal_${Date.now()}`
+  const username = 'alesanchezr'
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
   useEffect(() => {
-    initializeApp()
+    loadTodos()
   }, [])
 
-  const initializeApp = async () => {
+  const loadTodos = async () => {
     try {
       setLoading(true)
       setError('')
       
-      // Create new user with unique timestamp
-      const createRes = await fetch(`${API_BASE}/user/${username}`, {
-        method: 'POST'
-      })
-
-      if (createRes.status === 201 || createRes.status === 400) {
-        // Wait for server to process
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        await loadTodos()
-      } else {
-        throw new Error('Failed to create user')
-      }
-    } catch (err) {
-      setError(err.message)
-      setLoading(false)
-    }
-  }
-
-  const loadTodos = async () => {
-    try {
       const response = await fetch(`${API_BASE}/todos/${username}`)
       
       if (response.ok) {
@@ -131,12 +111,12 @@ const TodoList = () => {
     if (window.confirm('Delete all tasks?')) {
       try {
         setError('')
-        const response = await fetch(`${API_BASE}/user/${username}`, {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          setTodos([])
+        for (const todo of todos) {
+          await fetch(`${API_BASE}/todos/${todo.id}`, {
+            method: 'DELETE'
+          })
         }
+        setTodos([])
       } catch (err) {
         setError(err.message)
       }
