@@ -1,5 +1,20 @@
 // Complete API service with all required endpoints
-const API_BASE = 'http://localhost:3001/api'
+
+// Detect if running in GitHub Codespaces or localhost
+const getAPIBase = () => {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    // GitHub Codespaces - extract the port from current URL and replace with 3001
+    const currentUrl = window.location.origin
+    const baseUrl = currentUrl.replace(/:\d+$/, ':3001')
+    return baseUrl
+  }
+  // Localhost development
+  return 'http://localhost:3001'
+}
+
+const API_BASE = getAPIBase() + '/api'
+
+console.log('🔌 API Base URL:', API_BASE)
 
 export const todoAPI = {
   // GET all todos for user
