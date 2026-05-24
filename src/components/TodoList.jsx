@@ -5,7 +5,7 @@ const TodoList = () => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [username] = useState('nibal-' + Math.random().toString(36).substr(2, 9))
+  const [username] = useState('user_' + Math.random().toString(36).substr(2, 9))
 
   const API_BASE = 'https://playground.4geeks.com/todo'
 
@@ -18,12 +18,22 @@ const TodoList = () => {
       setLoading(true)
       setError('')
       
-      const createResponse = await fetch(`${API_BASE}/user/${username}`, {
-        method: 'POST'
-      })
-
-      if (!createResponse.ok && createResponse.status !== 400) {
-        throw new Error('Failed to create user')
+      // First, try to get the user (which creates if doesn't exist)
+      const response = await fetch(`${API_BASE}/user/${username}`)
+      
+      if (response.status === 404) {
+        // User doesn't exist, create it
+        const createRes = await fetch(`${API_BASE}/user/${username}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        })
+        
+        if (!createRes.ok) {
+          throw new Error('Could not initialize user')
+        }
       }
 
       await loadTodos()
@@ -41,7 +51,7 @@ const TodoList = () => {
       const response = await fetch(`${API_BASE}/todos/${username}`)
 
       if (!response.ok) {
-        throw new Error('Failed to load todos')
+        throw new Error('Could not load tasks')
       }
 
       const data = await response.json()
@@ -71,7 +81,7 @@ const TodoList = () => {
         })
 
         if (!response.ok) {
-          throw new Error('Failed to add task')
+          throw new Error('Could not add task')
         }
 
         setInput('')
@@ -90,7 +100,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete task')
+        throw new Error('Could not delete task')
       }
 
       await loadTodos()
@@ -120,7 +130,7 @@ const TodoList = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update task')
+        throw new Error('Could not update task')
       }
 
       await loadTodos()
@@ -138,10 +148,11 @@ const TodoList = () => {
         })
 
         if (!response.ok) {
-          throw new Error('Failed to clear all tasks')
+          throw new Error('Could not clear tasks')
         }
 
         setTodos([])
+        await initializeApp()
       } catch (err) {
         setError(err.message)
       }
@@ -165,7 +176,7 @@ const TodoList = () => {
 
       {loading ? (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded text-center">
-          <i className="fas fa-spinner fa-spin mr-2"></i> Loading...
+          Loading...
         </div>
       ) : (
         <>
@@ -214,8 +225,7 @@ const TodoList = () => {
           </div>
 
           <div className="mt-6 text-center text-gray-500 text-sm">
-            <p>✨ Synced with 4Geeks API</p>
-            <p className="mt-1">All changes are saved to the server automatically</p>
+            <p>Synced with 4Geeks API</p>
           </div>
         </>
       )}
