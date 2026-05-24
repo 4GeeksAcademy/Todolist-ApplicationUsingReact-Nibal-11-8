@@ -26,10 +26,17 @@ const TodoContainer = () => {
   const initializeApp = async () => {
     try {
       setLoading(true)
-      await todoAPI.createUser(username)
-      await new Promise(resolve => setTimeout(resolve, 800))
-      const data = await todoAPI.getTodos(username)
-      setTodos(Array.isArray(data) ? data : [])
+      
+      // Try to load from localStorage first
+      let storedTodos = await todoAPI.loadFromStorage(username)
+      
+      if (storedTodos.length === 0) {
+        // If no stored todos, fetch from API
+        const apiTodos = await todoAPI.getTodos(username)
+        storedTodos = apiTodos
+      }
+      
+      setTodos(storedTodos)
       setLoading(false)
     } catch (err) {
       console.error('Init error:', err)
