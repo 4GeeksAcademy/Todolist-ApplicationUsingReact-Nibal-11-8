@@ -5,11 +5,12 @@ const getAPIBase = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
     
-    // GitHub Codespaces format: *.app.github.dev
+    // GitHub Codespaces format: prefix-3000.app.github.dev
     if (hostname.includes('app.github.dev')) {
-      // Extract the subdomain prefix (e.g., "super-duper-giggle-9rqxxw5q9p439xg6")
-      const parts = hostname.split('.')
-      const prefix = parts[0]
+      // Extract the subdomain prefix by removing the port number
+      // From "super-duper-giggle-9rqxxw5q9p439xg6-3000.app.github.dev"
+      // Get "super-duper-giggle-9rqxxw5q9p439xg6"
+      const prefix = hostname.split('-3000')[0]
       // Construct the 3001 port URL
       return `https://${prefix}-3001.app.github.dev`
     }
